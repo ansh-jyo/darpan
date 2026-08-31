@@ -1,364 +1,143 @@
-"use client";
-import Link from "next/link";
+ "use client";
 
 import {
-  Activity,
   AlertTriangle,
-  Bell,
-  BrainCircuit,
+  BarChart3,
   Building2,
-  ChevronDown,
-  CircleHelp,
-  Clock3,
-  DollarSign,
-  FileWarning,
-  LayoutDashboard,
-  Map,
-  Menu,
-  Search,
-  Settings,
   ShieldAlert,
-  Sparkles,
+  IndianRupee,
+  TrendingDown,
   TrendingUp,
-  Users,
-  X,
 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
+import { getProjects } from "@/lib/api";
+import { Project } from "@/types/project";
 
-type PriorityMode = "intervention" | "investigation";
+export default function DashboardPage() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
 
-const interventionProjects = [
-  {
-    rank: 1,
-    name: "Eastern Freight Corridor",
-    location: "Uttar Pradesh",
-    sector: "Transport",
-    risk: 91,
-    priority: 96,
-    driver: "Schedule deterioration",
-    status: "Critical",
-  },
-  {
-    rank: 2,
-    name: "Regional Water Grid",
-    location: "Rajasthan",
-    sector: "Water",
-    risk: 87,
-    priority: 92,
-    driver: "Cost trajectory",
-    status: "High",
-  },
-  {
-    rank: 3,
-    name: "National Power Link",
-    location: "Maharashtra",
-    sector: "Energy",
-    risk: 82,
-    priority: 88,
-    driver: "Progress deficit",
-    status: "High",
-  },
-  {
-    rank: 4,
-    name: "Integrated Logistics Hub",
-    location: "Gujarat",
-    sector: "Logistics",
-    risk: 76,
-    priority: 81,
-    driver: "Implementation risk",
-    status: "Medium",
-  },
-  {
-    rank: 5,
-    name: "Urban Mobility Network",
-    location: "Karnataka",
-    sector: "Transport",
-    risk: 72,
-    priority: 78,
-    driver: "Milestone deviation",
-    status: "Medium",
-  },
-];
+  useEffect(() => {
+    let mounted = true;
 
-const investigationProjects = [
-  {
-    rank: 1,
-    name: "Regional Water Grid",
-    location: "Rajasthan",
-    sector: "Water",
-    risk: 87,
-    priority: 95,
-    driver: "Financial–physical divergence",
-    status: "Review",
-  },
-  {
-    rank: 2,
-    name: "Eastern Freight Corridor",
-    location: "Uttar Pradesh",
-    sector: "Transport",
-    risk: 91,
-    priority: 91,
-    driver: "Unusual expenditure pattern",
-    status: "Review",
-  },
-  {
-    rank: 3,
-    name: "Coastal Energy Terminal",
-    location: "Odisha",
-    sector: "Energy",
-    risk: 64,
-    priority: 86,
-    driver: "Peer deviation",
-    status: "Review",
-  },
-  {
-    rank: 4,
-    name: "National Power Link",
-    location: "Maharashtra",
-    sector: "Energy",
-    risk: 82,
-    priority: 80,
-    driver: "Progress anomaly",
-    status: "Review",
-  },
-  {
-    rank: 5,
-    name: "Metro Expansion Phase II",
-    location: "Tamil Nadu",
-    sector: "Urban",
-    risk: 58,
-    priority: 76,
-    driver: "Data inconsistency",
-    status: "Review",
-  },
-];
+    async function loadProjects() {
+      try {
+        const data = await getProjects();
+        if (mounted) setProjects(data);
+      } catch (error) {
+        console.error("Failed to load projects:", error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
 
-const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, active: true },
-  { label: "Projects", icon: Building2 },
-  { label: "Early Warnings", icon: Bell },
-  { label: "Analytics", icon: TrendingUp },
-  { label: "Investigation", icon: ShieldAlert },
-  { label: "What-if Lab", icon: Activity },
-  { label: "DARPAN AI", icon: BrainCircuit },
-];
+    loadProjects();
 
-function RiskBadge({ risk }: { risk: number }) {
-  const level =
-    risk >= 85 ? "Critical" : risk >= 70 ? "High" : risk >= 50 ? "Medium" : "Low";
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-  return (
-    <span className={`risk-badge risk-${level.toLowerCase()}`}>
-      <span className="risk-dot" />
-      {level}
-    </span>
+  const criticalProjects = useMemo(
+    () => projects.filter((p) => p.risk.level === "critical"),
+    [projects]
   );
-}
 
-function StatCard({
-  title,
-  value,
-  subtitle,
-  icon: Icon,
-  trend,
-  delay,
-}: {
-  title: string;
-  value: string;
-  subtitle: string;
-  icon: typeof Activity;
-  trend?: string;
-  delay: number;
-}) {
-  return (
-    <motion.div
-      className="stat-card"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay }}
-    >
-      <div className="stat-top">
-        <div className="stat-icon">
-          <Icon size={19} strokeWidth={1.8} />
-        </div>
-
-        {trend && (
-          <span className="stat-trend">
-            <TrendingUp size={13} />
-            {trend}
-          </span>
-        )}
-      </div>
-
-      <div className="stat-value">{value}</div>
-      <div className="stat-title">{title}</div>
-      <div className="stat-subtitle">{subtitle}</div>
-    </motion.div>
+  const highRiskProjects = useMemo(
+    () => projects.filter((p) => p.risk.level === "high"),
+    [projects]
   );
-}
 
-export default function Dashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [priorityMode, setPriorityMode] =
-    useState<PriorityMode>("intervention");
+  const mediumProjects = useMemo(
+    () => projects.filter((p) => p.risk.level === "medium"),
+    [projects]
+  );
 
-  const projects =
-    priorityMode === "intervention"
-      ? interventionProjects
-      : investigationProjects;
+  const lowProjects = useMemo(
+    () => projects.filter((p) => p.risk.level === "low"),
+    [projects]
+  );
+
+  const averageRisk = useMemo(() => {
+    if (!projects.length) return 0;
+
+    return Math.round(
+      projects.reduce((sum, p) => sum + p.risk.overall, 0) /
+        projects.length
+    );
+  }, [projects]);
+
+  const totalApprovedCost = useMemo(
+    () =>
+      projects.reduce(
+        (sum, p) => sum + p.financial.approvedCost,
+        0
+      ),
+    [projects]
+  );
+
+  const totalRevisedCost = useMemo(
+    () =>
+      projects.reduce(
+        (sum, p) => sum + p.financial.revisedCost,
+        0
+      ),
+    [projects]
+  );
+
+  const costExposure = totalRevisedCost - totalApprovedCost;
+
+  const priorityProjects = useMemo(
+    () =>
+      [...projects]
+        .sort((a, b) => b.risk.overall - a.risk.overall)
+        .slice(0, 4),
+    [projects]
+  );
+
+  const riskCounts = {
+    critical: criticalProjects.length,
+    high: highRiskProjects.length,
+    medium: mediumProjects.length,
+    low: lowProjects.length,
+  };
 
   return (
     <main className="darpan-app">
-      {/* Mobile overlay */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            className="mobile-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* SIDEBAR */}
-      <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
-        <div className="brand">
-          <div className="brand-mark">
-            <span>द</span>
-          </div>
-
-          <div>
-            <div className="brand-name">DARPAN</div>
-            <div className="brand-subtitle">
-              Infrastructure Intelligence
-            </div>
-          </div>
-
-          <button
-            className="mobile-close"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close navigation"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="sidebar-section-label">COMMAND CENTER</div>
-
-        <nav className="sidebar-nav">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <button
-                key={item.label}
-                className={`nav-item ${item.active ? "nav-active" : ""}`}
-              >
-                <Icon size={18} strokeWidth={1.8} />
-                <span>{item.label}</span>
-
-                {item.label === "Early Warnings" && (
-                  <span className="nav-count">37</span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="sidebar-spacer" />
-
-        <div className="system-status">
-          <div className="status-pulse">
-            <span />
-          </div>
-
-          <div>
-            <div className="status-title">Analytics engine</div>
-            <div className="status-value">Operational</div>
-          </div>
-        </div>
-
-        <button className="nav-item settings-item">
-          <Settings size={18} strokeWidth={1.8} />
-          <span>Settings</span>
-        </button>
-
-        <div className="sidebar-footer">
-          <div className="footer-symbol">D</div>
-          <div>
-            <div className="footer-name">DARPAN v0.1</div>
-            <div className="footer-text">Predictive monitoring</div>
-          </div>
-        </div>
+      <aside className="sidebar">
+        <DashboardSidebar criticalCount={criticalProjects.length} />
       </aside>
 
-      {/* MAIN */}
       <section className="main-area">
-        {/* HEADER */}
         <header className="top-header">
-          <div className="header-left">
-            <button
-              className="mobile-menu"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open navigation"
-            >
-              <Menu size={21} />
-            </button>
-
-            <div>
-              <div className="breadcrumb">COMMAND CENTER / OVERVIEW</div>
-              <h1>National Infrastructure Pulse</h1>
-            </div>
+          <div>
+            <div className="breadcrumb">DARPAN / NATIONAL PORTFOLIO</div>
+            <h1>Infrastructure Intelligence</h1>
           </div>
 
           <div className="header-actions">
-            <div className="search-box">
-              <Search size={17} />
-              <input placeholder="Search projects..." />
-              <kbd>⌘ K</kbd>
-            </div>
-
-            <button className="header-icon" aria-label="Help">
-              <CircleHelp size={19} />
-            </button>
-
-            <button className="header-icon notification" aria-label="Notifications">
-              <Bell size={19} />
-              <span />
-            </button>
-
-            <div className="profile">
-              <div className="profile-avatar">AM</div>
-              <div className="profile-info">
-                <span>Admin Monitor</span>
-                <small>MoSPI</small>
-              </div>
-              <ChevronDown size={15} />
+            <div className="data-refresh">
+              <div className="refresh-dot" />
+              Data snapshot
+              <strong>April 2026</strong>
             </div>
           </div>
         </header>
 
-        {/* CONTENT */}
-        <div className="dashboard-content">
-          {/* Intro */}
-          <motion.div
-            className="dashboard-intro"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <div>
-              <div className="eyebrow">
-                <span className="eyebrow-dot" />
+        <div className="dashboard-content dashboard-v2">
+          {/* HERO */}
+          <section className="dash2-hero">
+            <div className="dash2-hero-copy">
+              <div className="dash2-eyebrow">
+                <span />
                 LIVE PORTFOLIO INTELLIGENCE
               </div>
 
               <h2>
-                See the risk.
-                <span> Before it becomes a crisis.</span>
+                See the risk.{" "}
+                <span>Before it becomes a crisis.</span>
               </h2>
 
               <p>
@@ -367,358 +146,653 @@ export default function Dashboard() {
               </p>
             </div>
 
-            <div className="data-refresh">
-              <div className="refresh-dot" />
+            <div className="dash2-snapshot">
+              <span className="dash2-live-dot" />
               <span>Data snapshot</span>
               <strong>April 2026</strong>
             </div>
-          </motion.div>
+          </section>
 
-          {/* STATS */}
-          <div className="stats-grid">
-            <StatCard
-              title="Total projects"
-              value="1,981"
-              subtitle="Across 17 ministries · 22 sectors"
-              icon={Building2}
-              delay={0.05}
+          {/* KPI CARDS */}
+          <section className="dash2-kpis">
+            <KpiCard
+              icon={<Building2 size={19} />}
+              label="Total projects"
+              value={loading ? "—" : projects.length.toLocaleString("en-IN")}
+              helper="Current monitored portfolio"
             />
 
-            <StatCard
-              title="High-risk projects"
-              value="142"
-              subtitle="7.2% of monitored portfolio"
-              icon={ShieldAlert}
-              trend="+8.4%"
-              delay={0.1}
+            <KpiCard
+              icon={<ShieldAlert size={19} />}
+              label="High-risk projects"
+              value={
+                loading
+                  ? "—"
+                  : (criticalProjects.length + highRiskProjects.length).toLocaleString(
+                      "en-IN"
+                    )
+              }
+              helper={
+                projects.length
+                  ? `${Math.round(
+                      ((criticalProjects.length + highRiskProjects.length) /
+                        projects.length) *
+                        100
+                    )}% of monitored portfolio`
+                  : "Portfolio risk"
+              }
             />
 
-            <StatCard
-              title="Cost exposure"
-              value="₹42.78L Cr"
-              subtitle="Revised portfolio cost"
-              icon={DollarSign}
-              delay={0.15}
+            <KpiCard
+              icon={<IndianRupee size={19} />}
+              label="Cost exposure"
+              value={loading ? "—" : formatCrore(costExposure)}
+              helper="Revised minus approved cost"
             />
 
-            <StatCard
-              title="Active warnings"
-              value="37"
-              subtitle="Require monitoring attention"
-              icon={AlertTriangle}
-              trend="+5"
-              delay={0.2}
+            <KpiCard
+              icon={<AlertTriangle size={19} />}
+              label="Active warnings"
+              value={loading ? "—" : criticalProjects.length}
+              helper="Require monitoring attention"
+              danger={criticalProjects.length > 0}
             />
-          </div>
+          </section>
 
-          {/* ANALYTICS ROW */}
-          <div className="analytics-grid">
-            {/* Risk Distribution */}
-            <motion.div
-              className="panel risk-panel"
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-            >
-              <div className="panel-header">
+          {/* ANALYTICS */}
+          <section className="dash2-analytics">
+            <RiskDistribution
+              counts={riskCounts}
+              total={projects.length}
+            />
+
+            <RiskTrend averageRisk={averageRisk} />
+          </section>
+
+          {/* WARNING + INSIGHT */}
+          <section className="dash2-lower-grid">
+            <EarlyWarning project={criticalProjects[0]} />
+
+            <section className="dash2-panel dash2-insight-panel">
+              <div className="dash2-panel-head">
                 <div>
-                  <div className="panel-label">PORTFOLIO HEALTH</div>
-                  <h3>Risk distribution</h3>
+                  <span className="dash2-panel-kicker">
+                    PORTFOLIO SIGNAL
+                  </span>
+                  <h3>What DARPAN sees</h3>
                 </div>
 
-                <button className="panel-action">
-                  Last snapshot <ChevronDown size={14} />
-                </button>
-              </div>
-
-              <div className="risk-overview">
-                <div className="risk-ring">
-                  <div className="risk-ring-inner">
-                    <strong>7.2%</strong>
-                    <span>High risk</span>
-                  </div>
-                </div>
-
-                <div className="risk-legend">
-                  <div className="legend-row">
-                    <span className="legend-color low" />
-                    <span>Low risk</span>
-                    <strong>1,204</strong>
-                  </div>
-
-                  <div className="legend-row">
-                    <span className="legend-color medium" />
-                    <span>Medium</span>
-                    <strong>635</strong>
-                  </div>
-
-                  <div className="legend-row">
-                    <span className="legend-color high" />
-                    <span>High</span>
-                    <strong>105</strong>
-                  </div>
-
-                  <div className="legend-row">
-                    <span className="legend-color critical" />
-                    <span>Critical</span>
-                    <strong>37</strong>
-                  </div>
+                <div className="dash2-signal-badge">
+                  <TrendingUp size={13} />
+                  Predictive
                 </div>
               </div>
 
-              <div className="risk-bar">
-                <span className="bar-low" style={{ width: "61%" }} />
-                <span className="bar-medium" style={{ width: "32%" }} />
-                <span className="bar-high" style={{ width: "5%" }} />
-                <span className="bar-critical" style={{ width: "2%" }} />
+              <div className="dash2-insight-list">
+                <InsightRow
+                  label="Average portfolio risk"
+                  value={`${averageRisk}/100`}
+                  note={
+                    averageRisk >= 70
+                      ? "Elevated"
+                      : averageRisk >= 45
+                      ? "Moderate"
+                      : "Controlled"
+                  }
+                />
+
+                <InsightRow
+                  label="Financial vs physical gap"
+                  value={
+                    projects.length
+                      ? `${Math.round(
+                          projects.reduce(
+                            (sum, p) =>
+                              sum +
+                              (p.progress.financial -
+                                p.progress.physical),
+                            0
+                          ) / projects.length
+                        )} pp`
+                      : "—"
+                  }
+                  note="Portfolio average"
+                />
+
+                <InsightRow
+                  label="Highest-risk project"
+                  value={priorityProjects[0]?.risk.overall ?? "—"}
+                  note={priorityProjects[0]?.name ?? "No projects"}
+                />
               </div>
-            </motion.div>
+            </section>
+          </section>
 
-            {/* Trend */}
-            <motion.div
-              className="panel trend-panel"
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <div className="panel-header">
-                <div>
-                  <div className="panel-label">RISK TRAJECTORY</div>
-                  <h3>Portfolio risk trend</h3>
-                </div>
-
-                <div className="trend-value">
-                  <TrendingUp size={15} />
-                  <strong>+4.8%</strong>
-                  <span>vs previous</span>
-                </div>
+          {/* PRIORITY PROJECTS */}
+          <section className="dash2-panel dash2-priority">
+            <div className="dash2-panel-head">
+              <div>
+                <span className="dash2-panel-kicker">
+                  PRIORITY QUEUE
+                </span>
+                <h3>Projects requiring attention</h3>
               </div>
 
-              <div className="fake-chart">
-                <div className="chart-grid">
-                  <span />
-                  <span />
-                  <span />
-                  <span />
-                </div>
+              <Link href="/projects" className="dash2-view-all">
+                View all <span>→</span>
+              </Link>
+            </div>
 
-                <svg
-                  viewBox="0 0 600 190"
-                  preserveAspectRatio="none"
-                  className="chart-svg"
-                >
-                  <defs>
-                    <linearGradient id="riskFill" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopOpacity="0.25" />
-                      <stop offset="100%" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-
-                  <path
-                    d="M0,145 C50,139 65,130 100,135 C140,141 155,116 190,120 C230,124 240,103 280,108 C320,113 335,82 370,91 C410,101 420,65 455,72 C490,78 515,42 550,54 C575,61 585,38 600,31 L600,190 L0,190 Z"
-                    fill="url(#riskFill)"
+            {loading ? (
+              <div className="dash2-loading">
+                <div className="loading-spinner" />
+                Loading portfolio intelligence...
+              </div>
+            ) : (
+              <div className="dash2-project-list">
+                {priorityProjects.map((project, index) => (
+                  <PriorityProjectRow
+                    key={project.id}
+                    project={project}
+                    rank={index + 1}
                   />
-
-                  <path
-                    d="M0,145 C50,139 65,130 100,135 C140,141 155,116 190,120 C230,124 240,103 280,108 C320,113 335,82 370,91 C410,101 420,65 455,72 C490,78 515,42 550,54 C575,61 585,38 600,31"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    vectorEffect="non-scaling-stroke"
-                  />
-
-                  <circle cx="550" cy="54" r="5" fill="currentColor" />
-                </svg>
-
-                <div className="chart-labels">
-                  <span>Nov</span>
-                  <span>Dec</span>
-                  <span>Jan</span>
-                  <span>Feb</span>
-                  <span>Mar</span>
-                  <span>Apr</span>
-                </div>
+                ))}
               </div>
-            </motion.div>
-          </div>
+            )}
+          </section>
 
-          {/* PRIORITY */}
-          <motion.section
-            className="panel priority-panel"
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-          >
-            <div className="priority-header">
-              <div>
-                <div className="panel-label">DECISION SUPPORT</div>
-                <h3>Priority projects</h3>
-                <p>
-                  Projects requiring the highest level of attention based on
-                  current intelligence.
-                </p>
-              </div>
-
-              <div className="priority-switch">
-                <button
-                  className={priorityMode === "intervention" ? "selected" : ""}
-                  onClick={() => setPriorityMode("intervention")}
-                >
-                  <AlertTriangle size={15} />
-                  Intervention
-                </button>
-
-                <button
-                  className={priorityMode === "investigation" ? "selected" : ""}
-                  onClick={() => setPriorityMode("investigation")}
-                >
-                  <FileWarning size={15} />
-                  Investigation
-                </button>
-              </div>
-            </div>
-
-            <div className="priority-table-wrap">
-              <table className="priority-table">
-                <thead>
-                  <tr>
-                    <th>RANK</th>
-                    <th>PROJECT</th>
-                    <th>SECTOR</th>
-                    <th>RISK</th>
-                    <th>PRIORITY</th>
-                    <th>PRIMARY SIGNAL</th>
-                    <th>STATUS</th>
-                    <th />
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {projects.map((project, index) => (
-                    <motion.tr
-                      key={project.name}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.4 + index * 0.05 }}
-                      className="project-row"
-                    >
-                      <td>
-                        <span className="rank-number">
-                          {String(project.rank).padStart(2, "0")}
-                        </span>
-                      </td>
-
-                      <td>
-                        <div className="project-name">
-                          <div className="project-mini-icon">
-                            <Building2 size={15} />
-                          </div>
-
-                          <div>
-                            <strong>{project.name}</strong>
-                            <span>{project.location}</span>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td>
-                        <span className="sector-pill">{project.sector}</span>
-                      </td>
-
-                      <td>
-                        <div className="risk-cell">
-                          <strong>{project.risk}</strong>
-                          <RiskBadge risk={project.risk} />
-                        </div>
-                      </td>
-
-                      <td>
-                        <div className="priority-score">
-                          <strong>{project.priority}</strong>
-                          <div className="priority-line">
-                            <span
-                              style={{
-                                width: `${project.priority}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-
-                      <td>
-                        <span className="driver">{project.driver}</span>
-                      </td>
-
-                      <td>
-                        <span
-                          className={`status-pill status-${project.status.toLowerCase()}`}
-                        >
-                          {project.status}
-                        </span>
-                      </td>
-
-                      <td>
-                        <Link
-                            href={`/projects/${project.rank}`}
-                            className="view-project"
-                          >
-                            View <span>→</span>
-                          </Link>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="priority-footer">
-              <span>
-                Showing <strong>5</strong> highest-priority projects
-              </span>
-
-              <button>
-                View all projects <span>→</span>
-              </button>
-            </div>
-          </motion.section>
-
-          {/* BOTTOM INFO */}
-          <div className="bottom-grid">
-            <div className="quick-card">
-              <div className="quick-icon">
-                <Clock3 size={19} />
+          {/* BOTTOM QUICK ACTIONS */}
+          <section className="dash2-actions">
+            <Link href="/warnings" className="dash2-action-card">
+              <div className="dash2-action-icon warning">
+                <AlertTriangle size={17} />
               </div>
               <div>
-                <span>EARLY WARNING</span>
-                <strong>12 projects show rising risk velocity</strong>
+                <span>EARLY WARNINGS</span>
+                <strong>Review predictive signals</strong>
               </div>
-              <button>Review →</button>
-            </div>
+              <b>→</b>
+            </Link>
 
-            <div className="quick-card">
-              <div className="quick-icon">
-                <Map size={19} />
+            <Link href="/projects" className="dash2-action-card">
+              <div className="dash2-action-icon">
+                <Building2 size={17} />
               </div>
               <div>
-                <span>GEOGRAPHIC VIEW</span>
-                <strong>Explore project risk across India</strong>
+                <span>PROJECT INTELLIGENCE</span>
+                <strong>Explore monitored projects</strong>
               </div>
-              <button>Open map →</button>
-            </div>
+              <b>→</b>
+            </Link>
 
-            <div className="quick-card ai-card">
-              <div className="quick-icon">
-                <Sparkles size={19} />
+            <Link href="/investigation" className="dash2-action-card">
+              <div className="dash2-action-icon">
+                <ShieldAlert size={17} />
               </div>
               <div>
-                <span>DARPAN AI</span>
-                <strong>Ask about projects, risk or trends</strong>
+                <span>INVESTIGATION</span>
+                <strong>Inspect unusual behaviour</strong>
               </div>
-              <button>Ask AI →</button>
-            </div>
-          </div>
+              <b>→</b>
+            </Link>
+          </section>
         </div>
       </section>
     </main>
   );
+}
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+function DashboardSidebar({
+  criticalCount,
+}: {
+  criticalCount: number;
+}) {
+  return (
+    <>
+      <div className="brand">
+        <div className="brand-mark">
+          <span>द</span>
+        </div>
+        <div>
+          <div className="brand-name">DARPAN</div>
+          <div className="brand-subtitle">
+            Infrastructure Intelligence
+          </div>
+        </div>
+      </div>
+
+      <div className="sidebar-section-label">COMMAND CENTER</div>
+
+      <nav className="sidebar-nav">
+        <Link href="/" className="nav-item nav-active">
+          <BarChart3 size={18} />
+          <span>Dashboard</span>
+        </Link>
+
+        <Link href="/projects" className="nav-item">
+          <Building2 size={18} />
+          <span>Projects</span>
+        </Link>
+
+        <Link href="/warnings" className="nav-item">
+          <AlertTriangle size={18} />
+          <span>Early Warnings</span>
+          {criticalCount > 0 && (
+            <span className="nav-count">{criticalCount}</span>
+          )}
+        </Link>
+
+        <Link href="/investigation" className="nav-item">
+          <ShieldAlert size={18} />
+          <span>Investigation</span>
+        </Link>
+      </nav>
+
+      <div className="sidebar-spacer" />
+
+      <div className="system-status">
+        <div className="status-pulse">
+          <span />
+        </div>
+        <div>
+          <div className="status-title">Analytics engine</div>
+          <div className="status-value">Operational</div>
+        </div>
+      </div>
+
+      <div className="sidebar-footer">
+        <div className="footer-symbol">D</div>
+        <div>
+          <div className="footer-name">DARPAN v0.1</div>
+          <div className="footer-text">Predictive monitoring</div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* =========================================================
+   KPI
+========================================================= */
+
+function KpiCard({
+  icon,
+  label,
+  value,
+  helper,
+  danger,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  helper: string;
+  danger?: boolean;
+}) {
+  return (
+    <article className={`dash2-kpi ${danger ? "danger" : ""}`}>
+      <div className="dash2-kpi-top">
+        <div className="dash2-kpi-icon">{icon}</div>
+        {danger && (
+          <span className="dash2-kpi-alert">
+            <AlertTriangle size={12} />
+          </span>
+        )}
+      </div>
+
+      <div className="dash2-kpi-value">{value}</div>
+      <div className="dash2-kpi-label">{label}</div>
+      <div className="dash2-kpi-helper">{helper}</div>
+    </article>
+  );
+}
+
+/* =========================================================
+   RISK DISTRIBUTION
+========================================================= */
+
+function RiskDistribution({
+  counts,
+  total,
+}: {
+  counts: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  total: number;
+}) {
+  const criticalPct = total ? (counts.critical / total) * 100 : 0;
+  const highPct = total ? (counts.high / total) * 100 : 0;
+  const mediumPct = total ? (counts.medium / total) * 100 : 0;
+  const lowPct = total ? (counts.low / total) * 100 : 0;
+
+  const criticalEnd = criticalPct;
+  const highEnd = criticalEnd + highPct;
+  const mediumEnd = highEnd + mediumPct;
+
+  return (
+    <section className="dash2-panel dash2-risk-panel">
+      <div className="dash2-panel-head">
+        <div>
+          <span className="dash2-panel-kicker">PORTFOLIO HEALTH</span>
+          <h3>Risk distribution</h3>
+        </div>
+
+        <span className="dash2-mini-badge">
+          <span />
+          Live
+        </span>
+      </div>
+
+      <div className="dash2-risk-body">
+        <div
+          className="dash2-donut"
+          style={{
+            background: `conic-gradient(
+              #b65d55 0 ${criticalEnd}%,
+              #c99549 ${criticalEnd}% ${highEnd}%,
+              #c7ad62 ${highEnd}% ${mediumEnd}%,
+              #5d9c82 ${mediumEnd}% 100%
+            )`,
+          }}
+        >
+          <div className="dash2-donut-center">
+            <strong>
+              {total ? Math.round(((counts.critical + counts.high) / total) * 100) : 0}%
+            </strong>
+            <span>high risk</span>
+          </div>
+        </div>
+
+        <div className="dash2-legend">
+          <LegendRow
+            label="Low risk"
+            value={counts.low}
+            percentage={lowPct}
+            type="low"
+          />
+          <LegendRow
+            label="Medium"
+            value={counts.medium}
+            percentage={mediumPct}
+            type="medium"
+          />
+          <LegendRow
+            label="High"
+            value={counts.high}
+            percentage={highPct}
+            type="high"
+          />
+          <LegendRow
+            label="Critical"
+            value={counts.critical}
+            percentage={criticalPct}
+            type="critical"
+          />
+        </div>
+      </div>
+
+      <div className="dash2-risk-bar">
+        <span style={{ width: `${lowPct}%` }} className="low" />
+        <span style={{ width: `${mediumPct}%` }} className="medium" />
+        <span style={{ width: `${highPct}%` }} className="high" />
+        <span style={{ width: `${criticalPct}%` }} className="critical" />
+      </div>
+    </section>
+  );
+}
+
+function LegendRow({
+  label,
+  value,
+  percentage,
+  type,
+}: {
+  label: string;
+  value: number;
+  percentage: number;
+  type: "low" | "medium" | "high" | "critical";
+}) {
+  return (
+    <div className="dash2-legend-row">
+      <span className={`dash2-legend-dot ${type}`} />
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{Math.round(percentage)}%</small>
+    </div>
+  );
+}
+
+/* =========================================================
+   RISK TREND
+========================================================= */
+
+function RiskTrend({ averageRisk }: { averageRisk: number }) {
+  const points = [
+    [0, 76],
+    [8, 73],
+    [16, 70],
+    [24, 71],
+    [32, 63],
+    [40, 65],
+    [48, 58],
+    [56, 61],
+    [64, 53],
+    [72, 56],
+    [80, 48],
+    [88, 51],
+    [96, 43],
+    [100, 36],
+  ];
+
+  const line = points
+    .map(([x, y]) => `${x},${y}`)
+    .join(" ");
+
+  const area = `0,100 ${line} 100,100`;
+
+  return (
+    <section className="dash2-panel dash2-trend-panel">
+      <div className="dash2-panel-head">
+        <div>
+          <span className="dash2-panel-kicker">RISK TRAJECTORY</span>
+          <h3>Portfolio risk trend</h3>
+        </div>
+
+        <div className="dash2-trend-value">
+          <TrendingUp size={13} />
+          <strong>+4.8%</strong>
+          <span>vs previous</span>
+        </div>
+      </div>
+
+      <div className="dash2-chart">
+        <div className="dash2-chart-grid">
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+
+        <svg
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          className="dash2-chart-svg"
+          aria-label="Portfolio risk trend"
+        >
+          <polygon points={area} className="dash2-chart-area" />
+          <polyline
+            points={line}
+            fill="none"
+            className="dash2-chart-line"
+          />
+          <circle
+            cx="88"
+            cy="51"
+            r="1.8"
+            className="dash2-chart-point"
+          />
+        </svg>
+
+        <div className="dash2-chart-labels">
+          <span>Nov</span>
+          <span>Dec</span>
+          <span>Jan</span>
+          <span>Feb</span>
+          <span>Mar</span>
+          <span>Apr</span>
+        </div>
+      </div>
+
+      <div className="dash2-chart-footer">
+        <span>Current portfolio risk</span>
+        <strong>{averageRisk}/100</strong>
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================
+   WARNING
+========================================================= */
+
+function EarlyWarning({ project }: { project?: Project }) {
+  return (
+    <section className="dash2-panel dash2-warning-panel">
+      <div className="dash2-panel-head">
+        <div>
+          <span className="dash2-panel-kicker">EARLY WARNING</span>
+          <h3>Attention required</h3>
+        </div>
+
+        <div className="dash2-warning-head-icon">
+          <AlertTriangle size={17} />
+        </div>
+      </div>
+
+      {project ? (
+        <div className="dash2-warning-card">
+          <div className="dash2-warning-icon">
+            <AlertTriangle size={20} />
+          </div>
+
+          <div className="dash2-warning-main">
+            <div className="dash2-warning-project">{project.name}</div>
+
+            <div className="dash2-warning-title">
+              {project.primaryRiskDriver ?? "Risk signal detected"}
+            </div>
+
+            <div className="dash2-warning-meta">
+              <span>Risk score</span>
+              <strong>{project.risk.overall}/100</strong>
+              <span>•</span>
+              <span>{project.state}</span>
+            </div>
+
+            <Link href={`/projects/${project.id}`}>
+              Investigate <span>→</span>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="dash2-no-warning">
+          <TrendingDown size={22} />
+          <strong>No critical projects</strong>
+          <span>
+            Portfolio is currently within monitored thresholds.
+          </span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* =========================================================
+   INSIGHT
+========================================================= */
+
+function InsightRow({
+  label,
+  value,
+  note,
+}: {
+  label: string;
+  value: string | number;
+  note: string;
+}) {
+  return (
+    <div className="dash2-insight-row">
+      <div>
+        <span>{label}</span>
+        <small>{note}</small>
+      </div>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+/* =========================================================
+   PRIORITY PROJECT
+========================================================= */
+
+function PriorityProjectRow({
+  project,
+  rank,
+}: {
+  project: Project;
+  rank: number;
+}) {
+  return (
+    <Link
+      href={`/projects/${project.id}`}
+      className="dash2-project-row"
+    >
+      <span className="dash2-rank">
+        {String(rank).padStart(2, "0")}
+      </span>
+
+      <div className="dash2-project-icon">
+        <Building2 size={17} />
+      </div>
+
+      <div className="dash2-project-main">
+        <strong>{project.name}</strong>
+        <span>{project.ministry}</span>
+      </div>
+
+      <div className="dash2-project-location">
+        <span>Location</span>
+        <strong>{project.state}</strong>
+      </div>
+
+      <div className="dash2-project-progress">
+        <span>Physical</span>
+        <strong>{project.progress.physical}%</strong>
+        <div>
+          <span style={{ width: `${project.progress.physical}%` }} />
+        </div>
+      </div>
+
+      <div className={`dash2-risk-score ${project.risk.level}`}>
+        <strong>{project.risk.overall}</strong>
+        <span>{project.risk.level}</span>
+      </div>
+
+      <span className="dash2-project-arrow">→</span>
+    </Link>
+  );
+}
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function formatCrore(value: number) {
+  return `₹${value.toLocaleString("en-IN")} Cr`;
 }
