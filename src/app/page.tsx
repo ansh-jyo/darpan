@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import {
   AlertTriangle,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 
 import { getProjects } from "@/lib/api";
 import { Project } from "@/types/project";
@@ -25,11 +26,16 @@ export default function DashboardPage() {
     async function loadProjects() {
       try {
         const data = await getProjects();
-        if (mounted) setProjects(data);
+
+        if (mounted) {
+          setProjects(data);
+        }
       } catch (error) {
         console.error("Failed to load projects:", error);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
 
@@ -106,30 +112,53 @@ export default function DashboardPage() {
 
   return (
     <main className="darpan-app">
+      {/* =====================================================
+          SIDEBAR
+      ===================================================== */}
+
       <aside className="sidebar">
-        <DashboardSidebar criticalCount={criticalProjects.length} />
+        <DashboardSidebar
+          criticalCount={criticalProjects.length}
+        />
       </aside>
 
+      {/* =====================================================
+          MAIN AREA
+      ===================================================== */}
+
       <section className="main-area">
+
+        {/* TOP HEADER */}
+
         <header className="top-header">
-          <div>
-            <div className="breadcrumb">DARPAN / NATIONAL PORTFOLIO</div>
-            <h1>Infrastructure Intelligence</h1>
+          <div className="top-header-title">
+            <span>DARPAN / NATIONAL PORTFOLIO</span>
+            <strong>Infrastructure Intelligence</strong>
           </div>
 
           <div className="header-actions">
             <div className="data-refresh">
               <div className="refresh-dot" />
-              Data snapshot
+              <span>Data snapshot</span>
               <strong>April 2026</strong>
             </div>
           </div>
         </header>
 
+        {/* ===================================================
+            DASHBOARD
+        =================================================== */}
+
         <div className="dashboard-content dashboard-v2">
-          {/* HERO */}
+
+          {/* =================================================
+              HERO
+          ================================================= */}
+
           <section className="dash2-hero">
+
             <div className="dash2-hero-copy">
+
               <div className="dash2-eyebrow">
                 <span />
                 LIVE PORTFOLIO INTELLIGENCE
@@ -144,6 +173,22 @@ export default function DashboardPage() {
                 A consolidated view of infrastructure project health,
                 emerging risk and intervention priorities.
               </p>
+
+            </div>
+
+            {/* BRAND BANNER */}
+
+            <div className="dash2-brand-banner">
+              <Image
+                src="/darpan-banner.png"
+                alt="DARPAN Infrastructure Intelligence"
+                fill
+                priority
+                sizes="420px"
+                className="dash2-brand-banner-image"
+              />
+
+              <div className="dash2-banner-overlay" />
             </div>
 
             <div className="dash2-snapshot">
@@ -151,14 +196,23 @@ export default function DashboardPage() {
               <span>Data snapshot</span>
               <strong>April 2026</strong>
             </div>
+
           </section>
 
-          {/* KPI CARDS */}
+          {/* =================================================
+              KPI CARDS
+          ================================================= */}
+
           <section className="dash2-kpis">
+
             <KpiCard
               icon={<Building2 size={19} />}
               label="Total projects"
-              value={loading ? "—" : projects.length.toLocaleString("en-IN")}
+              value={
+                loading
+                  ? "—"
+                  : projects.length.toLocaleString("en-IN")
+              }
               helper="Current monitored portfolio"
             />
 
@@ -168,14 +222,16 @@ export default function DashboardPage() {
               value={
                 loading
                   ? "—"
-                  : (criticalProjects.length + highRiskProjects.length).toLocaleString(
-                      "en-IN"
-                    )
+                  : (
+                      criticalProjects.length +
+                      highRiskProjects.length
+                    ).toLocaleString("en-IN")
               }
               helper={
                 projects.length
                   ? `${Math.round(
-                      ((criticalProjects.length + highRiskProjects.length) /
+                      ((criticalProjects.length +
+                        highRiskProjects.length) /
                         projects.length) *
                         100
                     )}% of monitored portfolio`
@@ -186,39 +242,64 @@ export default function DashboardPage() {
             <KpiCard
               icon={<IndianRupee size={19} />}
               label="Cost exposure"
-              value={loading ? "—" : formatCrore(costExposure)}
+              value={
+                loading
+                  ? "—"
+                  : formatCrore(costExposure)
+              }
               helper="Revised minus approved cost"
             />
 
             <KpiCard
               icon={<AlertTriangle size={19} />}
               label="Active warnings"
-              value={loading ? "—" : criticalProjects.length}
+              value={
+                loading
+                  ? "—"
+                  : criticalProjects.length
+              }
               helper="Require monitoring attention"
               danger={criticalProjects.length > 0}
             />
+
           </section>
 
-          {/* ANALYTICS */}
+          {/* =================================================
+              ANALYTICS
+          ================================================= */}
+
           <section className="dash2-analytics">
+
             <RiskDistribution
               counts={riskCounts}
               total={projects.length}
             />
 
-            <RiskTrend averageRisk={averageRisk} />
+            <RiskTrend
+              averageRisk={averageRisk}
+            />
+
           </section>
 
-          {/* WARNING + INSIGHT */}
+          {/* =================================================
+              WARNING + INSIGHT
+          ================================================= */}
+
           <section className="dash2-lower-grid">
-            <EarlyWarning project={criticalProjects[0]} />
+
+            <EarlyWarning
+              project={criticalProjects[0]}
+            />
 
             <section className="dash2-panel dash2-insight-panel">
+
               <div className="dash2-panel-head">
+
                 <div>
                   <span className="dash2-panel-kicker">
                     PORTFOLIO SIGNAL
                   </span>
+
                   <h3>What DARPAN sees</h3>
                 </div>
 
@@ -226,9 +307,11 @@ export default function DashboardPage() {
                   <TrendingUp size={13} />
                   Predictive
                 </div>
+
               </div>
 
               <div className="dash2-insight-list">
+
                 <InsightRow
                   label="Average portfolio risk"
                   value={`${averageRisk}/100`}
@@ -261,26 +344,46 @@ export default function DashboardPage() {
 
                 <InsightRow
                   label="Highest-risk project"
-                  value={priorityProjects[0]?.risk.overall ?? "—"}
-                  note={priorityProjects[0]?.name ?? "No projects"}
+                  value={
+                    priorityProjects[0]?.risk.overall ?? "—"
+                  }
+                  note={
+                    priorityProjects[0]?.name ??
+                    "No projects"
+                  }
                 />
+
               </div>
+
             </section>
+
           </section>
 
-          {/* PRIORITY PROJECTS */}
+          {/* =================================================
+              PRIORITY PROJECTS
+          ================================================= */}
+
           <section className="dash2-panel dash2-priority">
+
             <div className="dash2-panel-head">
+
               <div>
                 <span className="dash2-panel-kicker">
                   PRIORITY QUEUE
                 </span>
-                <h3>Projects requiring attention</h3>
+
+                <h3>
+                  Projects requiring attention
+                </h3>
               </div>
 
-              <Link href="/projects" className="dash2-view-all">
+              <Link
+                href="/projects"
+                className="dash2-view-all"
+              >
                 View all <span>→</span>
               </Link>
+
             </div>
 
             {loading ? (
@@ -290,52 +393,84 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="dash2-project-list">
-                {priorityProjects.map((project, index) => (
-                  <PriorityProjectRow
-                    key={project.id}
-                    project={project}
-                    rank={index + 1}
-                  />
-                ))}
+
+                {priorityProjects.map(
+                  (project, index) => (
+                    <PriorityProjectRow
+                      key={project.id}
+                      project={project}
+                      rank={index + 1}
+                    />
+                  )
+                )}
+
               </div>
             )}
+
           </section>
 
-          {/* BOTTOM QUICK ACTIONS */}
+          {/* =================================================
+              QUICK ACTIONS
+          ================================================= */}
+
           <section className="dash2-actions">
-            <Link href="/warnings" className="dash2-action-card">
+
+            <Link
+              href="/warnings"
+              className="dash2-action-card"
+            >
               <div className="dash2-action-icon warning">
                 <AlertTriangle size={17} />
               </div>
+
               <div>
                 <span>EARLY WARNINGS</span>
-                <strong>Review predictive signals</strong>
+                <strong>
+                  Review predictive signals
+                </strong>
               </div>
+
               <b>→</b>
             </Link>
 
-            <Link href="/projects" className="dash2-action-card">
+            <Link
+              href="/projects"
+              className="dash2-action-card"
+            >
               <div className="dash2-action-icon">
                 <Building2 size={17} />
               </div>
+
               <div>
                 <span>PROJECT INTELLIGENCE</span>
-                <strong>Explore monitored projects</strong>
+                <strong>
+                  Explore monitored projects
+                </strong>
               </div>
+
               <b>→</b>
             </Link>
 
-            <Link href="/investigation" className="dash2-action-card">
+            <Link
+              href="/investigation"
+              className="dash2-action-card"
+            >
               <div className="dash2-action-icon">
                 <ShieldAlert size={17} />
               </div>
+
               <div>
                 <span>INVESTIGATION</span>
-                <strong>Inspect unusual behaviour</strong>
+                <strong>
+                  Inspect unusual behaviour
+                </strong>
               </div>
+
               <b>→</b>
             </Link>
+
           </section>
+
         </div>
       </section>
     </main>
@@ -354,69 +489,123 @@ function DashboardSidebar({
   return (
     <>
       <div className="brand">
-        <div className="brand-mark">
-          <span>द</span>
+
+        <div className="brand-logo-wrap">
+          <Image
+            src="/darpan-logo.png"
+            alt="DARPAN"
+            width={48}
+            height={48}
+            priority
+            className="darpan-logo"
+          />
         </div>
+
         <div>
-          <div className="brand-name">DARPAN</div>
+          <div className="brand-name">
+            DARPAN
+          </div>
+
           <div className="brand-subtitle">
             Infrastructure Intelligence
           </div>
         </div>
+
       </div>
 
-      <div className="sidebar-section-label">COMMAND CENTER</div>
+      <div className="sidebar-section-label">
+        COMMAND CENTER
+      </div>
 
       <nav className="sidebar-nav">
-        <Link href="/" className="nav-item nav-active">
+
+        <Link
+          href="/"
+          className="nav-item nav-active"
+        >
           <BarChart3 size={18} />
           <span>Dashboard</span>
         </Link>
 
-        <Link href="/projects" className="nav-item">
+        <Link
+          href="/projects"
+          className="nav-item"
+        >
           <Building2 size={18} />
           <span>Projects</span>
         </Link>
 
-        <Link href="/warnings" className="nav-item">
+        <Link
+          href="/warnings"
+          className="nav-item"
+        >
           <AlertTriangle size={18} />
-          <span>Early Warnings</span>
+
+          <span>
+            Early Warnings
+          </span>
+
           {criticalCount > 0 && (
-            <span className="nav-count">{criticalCount}</span>
+            <span className="nav-count">
+              {criticalCount}
+            </span>
           )}
+
         </Link>
 
-        <Link href="/investigation" className="nav-item">
+        <Link
+          href="/investigation"
+          className="nav-item"
+        >
           <ShieldAlert size={18} />
           <span>Investigation</span>
         </Link>
+
       </nav>
 
       <div className="sidebar-spacer" />
 
       <div className="system-status">
+
         <div className="status-pulse">
           <span />
         </div>
+
         <div>
-          <div className="status-title">Analytics engine</div>
-          <div className="status-value">Operational</div>
+          <div className="status-title">
+            Analytics engine
+          </div>
+
+          <div className="status-value">
+            Operational
+          </div>
         </div>
+
       </div>
 
       <div className="sidebar-footer">
-        <div className="footer-symbol">D</div>
-        <div>
-          <div className="footer-name">DARPAN v0.1</div>
-          <div className="footer-text">Predictive monitoring</div>
+
+        <div className="footer-symbol">
+          D
         </div>
+
+        <div>
+          <div className="footer-name">
+            DARPAN v0.1
+          </div>
+
+          <div className="footer-text">
+            Predictive monitoring
+          </div>
+        </div>
+
       </div>
     </>
   );
 }
 
 /* =========================================================
-   KPI
+   KPI CARD
 ========================================================= */
 
 function KpiCard({
@@ -433,19 +622,38 @@ function KpiCard({
   danger?: boolean;
 }) {
   return (
-    <article className={`dash2-kpi ${danger ? "danger" : ""}`}>
+    <article
+      className={`dash2-kpi ${
+        danger ? "danger" : ""
+      }`}
+    >
+
       <div className="dash2-kpi-top">
-        <div className="dash2-kpi-icon">{icon}</div>
+
+        <div className="dash2-kpi-icon">
+          {icon}
+        </div>
+
         {danger && (
           <span className="dash2-kpi-alert">
             <AlertTriangle size={12} />
           </span>
         )}
+
       </div>
 
-      <div className="dash2-kpi-value">{value}</div>
-      <div className="dash2-kpi-label">{label}</div>
-      <div className="dash2-kpi-helper">{helper}</div>
+      <div className="dash2-kpi-value">
+        {value}
+      </div>
+
+      <div className="dash2-kpi-label">
+        {label}
+      </div>
+
+      <div className="dash2-kpi-helper">
+        {helper}
+      </div>
+
     </article>
   );
 }
@@ -466,30 +674,49 @@ function RiskDistribution({
   };
   total: number;
 }) {
-  const criticalPct = total ? (counts.critical / total) * 100 : 0;
-  const highPct = total ? (counts.high / total) * 100 : 0;
-  const mediumPct = total ? (counts.medium / total) * 100 : 0;
-  const lowPct = total ? (counts.low / total) * 100 : 0;
+  const criticalPct =
+    total ? (counts.critical / total) * 100 : 0;
+
+  const highPct =
+    total ? (counts.high / total) * 100 : 0;
+
+  const mediumPct =
+    total ? (counts.medium / total) * 100 : 0;
+
+  const lowPct =
+    total ? (counts.low / total) * 100 : 0;
 
   const criticalEnd = criticalPct;
-  const highEnd = criticalEnd + highPct;
-  const mediumEnd = highEnd + mediumPct;
+  const highEnd =
+    criticalEnd + highPct;
+
+  const mediumEnd =
+    highEnd + mediumPct;
 
   return (
     <section className="dash2-panel dash2-risk-panel">
+
       <div className="dash2-panel-head">
+
         <div>
-          <span className="dash2-panel-kicker">PORTFOLIO HEALTH</span>
-          <h3>Risk distribution</h3>
+          <span className="dash2-panel-kicker">
+            PORTFOLIO HEALTH
+          </span>
+
+          <h3>
+            Risk distribution
+          </h3>
         </div>
 
         <span className="dash2-mini-badge">
           <span />
           Live
         </span>
+
       </div>
 
       <div className="dash2-risk-body">
+
         <div
           className="dash2-donut"
           style={{
@@ -501,51 +728,94 @@ function RiskDistribution({
             )`,
           }}
         >
+
           <div className="dash2-donut-center">
+
             <strong>
-              {total ? Math.round(((counts.critical + counts.high) / total) * 100) : 0}%
+              {total
+                ? Math.round(
+                    ((counts.critical +
+                      counts.high) /
+                      total) *
+                      100
+                  )
+                : 0}
+              %
             </strong>
-            <span>high risk</span>
+
+            <span>
+              high risk
+            </span>
+
           </div>
+
         </div>
 
         <div className="dash2-legend">
+
           <LegendRow
             label="Low risk"
             value={counts.low}
             percentage={lowPct}
             type="low"
           />
+
           <LegendRow
             label="Medium"
             value={counts.medium}
             percentage={mediumPct}
             type="medium"
           />
+
           <LegendRow
             label="High"
             value={counts.high}
             percentage={highPct}
             type="high"
           />
+
           <LegendRow
             label="Critical"
             value={counts.critical}
             percentage={criticalPct}
             type="critical"
           />
+
         </div>
+
       </div>
 
       <div className="dash2-risk-bar">
-        <span style={{ width: `${lowPct}%` }} className="low" />
-        <span style={{ width: `${mediumPct}%` }} className="medium" />
-        <span style={{ width: `${highPct}%` }} className="high" />
-        <span style={{ width: `${criticalPct}%` }} className="critical" />
+
+        <span
+          style={{ width: `${lowPct}%` }}
+          className="low"
+        />
+
+        <span
+          style={{ width: `${mediumPct}%` }}
+          className="medium"
+        />
+
+        <span
+          style={{ width: `${highPct}%` }}
+          className="high"
+        />
+
+        <span
+          style={{ width: `${criticalPct}%` }}
+          className="critical"
+        />
+
       </div>
+
     </section>
   );
 }
+
+/* =========================================================
+   LEGEND
+========================================================= */
 
 function LegendRow({
   label,
@@ -556,14 +826,31 @@ function LegendRow({
   label: string;
   value: number;
   percentage: number;
-  type: "low" | "medium" | "high" | "critical";
+  type:
+    | "low"
+    | "medium"
+    | "high"
+    | "critical";
 }) {
   return (
     <div className="dash2-legend-row">
-      <span className={`dash2-legend-dot ${type}`} />
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{Math.round(percentage)}%</small>
+
+      <span
+        className={`dash2-legend-dot ${type}`}
+      />
+
+      <span>
+        {label}
+      </span>
+
+      <strong>
+        {value}
+      </strong>
+
+      <small>
+        {Math.round(percentage)}%
+      </small>
+
     </div>
   );
 }
@@ -572,7 +859,11 @@ function LegendRow({
    RISK TREND
 ========================================================= */
 
-function RiskTrend({ averageRisk }: { averageRisk: number }) {
+function RiskTrend({
+  averageRisk,
+}: {
+  averageRisk: number;
+}) {
   const points = [
     [0, 76],
     [8, 73],
@@ -594,24 +885,42 @@ function RiskTrend({ averageRisk }: { averageRisk: number }) {
     .map(([x, y]) => `${x},${y}`)
     .join(" ");
 
-  const area = `0,100 ${line} 100,100`;
+  const area =
+    `0,100 ${line} 100,100`;
 
   return (
     <section className="dash2-panel dash2-trend-panel">
+
       <div className="dash2-panel-head">
+
         <div>
-          <span className="dash2-panel-kicker">RISK TRAJECTORY</span>
-          <h3>Portfolio risk trend</h3>
+          <span className="dash2-panel-kicker">
+            RISK TRAJECTORY
+          </span>
+
+          <h3>
+            Portfolio risk trend
+          </h3>
         </div>
 
         <div className="dash2-trend-value">
+
           <TrendingUp size={13} />
-          <strong>+4.8%</strong>
-          <span>vs previous</span>
+
+          <strong>
+            +4.8%
+          </strong>
+
+          <span>
+            vs previous
+          </span>
+
         </div>
+
       </div>
 
       <div className="dash2-chart">
+
         <div className="dash2-chart-grid">
           <span />
           <span />
@@ -625,90 +934,150 @@ function RiskTrend({ averageRisk }: { averageRisk: number }) {
           className="dash2-chart-svg"
           aria-label="Portfolio risk trend"
         >
-          <polygon points={area} className="dash2-chart-area" />
+
+          <polygon
+            points={area}
+            className="dash2-chart-area"
+          />
+
           <polyline
             points={line}
             fill="none"
             className="dash2-chart-line"
           />
+
           <circle
             cx="88"
             cy="51"
             r="1.8"
             className="dash2-chart-point"
           />
+
         </svg>
 
         <div className="dash2-chart-labels">
+
           <span>Nov</span>
           <span>Dec</span>
           <span>Jan</span>
           <span>Feb</span>
           <span>Mar</span>
           <span>Apr</span>
+
         </div>
+
       </div>
 
       <div className="dash2-chart-footer">
-        <span>Current portfolio risk</span>
-        <strong>{averageRisk}/100</strong>
+
+        <span>
+          Current portfolio risk
+        </span>
+
+        <strong>
+          {averageRisk}/100
+        </strong>
+
       </div>
+
     </section>
   );
 }
 
 /* =========================================================
-   WARNING
+   EARLY WARNING
 ========================================================= */
 
-function EarlyWarning({ project }: { project?: Project }) {
+function EarlyWarning({
+  project,
+}: {
+  project?: Project;
+}) {
   return (
     <section className="dash2-panel dash2-warning-panel">
+
       <div className="dash2-panel-head">
+
         <div>
-          <span className="dash2-panel-kicker">EARLY WARNING</span>
-          <h3>Attention required</h3>
+          <span className="dash2-panel-kicker">
+            EARLY WARNING
+          </span>
+
+          <h3>
+            Attention required
+          </h3>
         </div>
 
         <div className="dash2-warning-head-icon">
           <AlertTriangle size={17} />
         </div>
+
       </div>
 
       {project ? (
         <div className="dash2-warning-card">
+
           <div className="dash2-warning-icon">
             <AlertTriangle size={20} />
           </div>
 
           <div className="dash2-warning-main">
-            <div className="dash2-warning-project">{project.name}</div>
+
+            <div className="dash2-warning-project">
+              {project.name}
+            </div>
 
             <div className="dash2-warning-title">
-              {project.primaryRiskDriver ?? "Risk signal detected"}
+              {project.primaryRiskDriver ??
+                "Risk signal detected"}
             </div>
 
             <div className="dash2-warning-meta">
-              <span>Risk score</span>
-              <strong>{project.risk.overall}/100</strong>
-              <span>•</span>
-              <span>{project.state}</span>
+
+              <span>
+                Risk score
+              </span>
+
+              <strong>
+                {project.risk.overall}/100
+              </strong>
+
+              <span>
+                •
+              </span>
+
+              <span>
+                {project.state}
+              </span>
+
             </div>
 
-            <Link href={`/projects/${project.id}`}>
+            <Link
+              href={`/projects/${project.id}`}
+            >
               Investigate <span>→</span>
             </Link>
+
           </div>
+
         </div>
       ) : (
         <div className="dash2-no-warning">
+
           <TrendingDown size={22} />
-          <strong>No critical projects</strong>
+
+          <strong>
+            No critical projects
+          </strong>
+
           <span>
-            Portfolio is currently within monitored thresholds.
+            Portfolio is currently within
+            monitored thresholds.
           </span>
+
         </div>
       )}
+
     </section>
   );
 }
@@ -728,11 +1097,23 @@ function InsightRow({
 }) {
   return (
     <div className="dash2-insight-row">
+
       <div>
-        <span>{label}</span>
-        <small>{note}</small>
+
+        <span>
+          {label}
+        </span>
+
+        <small>
+          {note}
+        </small>
+
       </div>
-      <strong>{value}</strong>
+
+      <strong>
+        {value}
+      </strong>
+
     </div>
   );
 }
@@ -753,6 +1134,7 @@ function PriorityProjectRow({
       href={`/projects/${project.id}`}
       className="dash2-project-row"
     >
+
       <span className="dash2-rank">
         {String(rank).padStart(2, "0")}
       </span>
@@ -762,29 +1144,67 @@ function PriorityProjectRow({
       </div>
 
       <div className="dash2-project-main">
-        <strong>{project.name}</strong>
-        <span>{project.ministry}</span>
+
+        <strong>
+          {project.name}
+        </strong>
+
+        <span>
+          {project.ministry}
+        </span>
+
       </div>
 
       <div className="dash2-project-location">
-        <span>Location</span>
-        <strong>{project.state}</strong>
+
+        <span>
+          Location
+        </span>
+
+        <strong>
+          {project.state}
+        </strong>
+
       </div>
 
       <div className="dash2-project-progress">
-        <span>Physical</span>
-        <strong>{project.progress.physical}%</strong>
+
+        <span>
+          Physical
+        </span>
+
+        <strong>
+          {project.progress.physical}%
+        </strong>
+
         <div>
-          <span style={{ width: `${project.progress.physical}%` }} />
+          <span
+            style={{
+              width: `${project.progress.physical}%`,
+            }}
+          />
         </div>
+
       </div>
 
-      <div className={`dash2-risk-score ${project.risk.level}`}>
-        <strong>{project.risk.overall}</strong>
-        <span>{project.risk.level}</span>
+      <div
+        className={`dash2-risk-score ${project.risk.level}`}
+      >
+
+        <strong>
+          {project.risk.overall}
+        </strong>
+
+        <span>
+          {project.risk.level}
+        </span>
+
       </div>
 
-      <span className="dash2-project-arrow">→</span>
+      <span className="dash2-project-arrow">
+        →
+      </span>
+
     </Link>
   );
 }

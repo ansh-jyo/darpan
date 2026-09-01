@@ -2,69 +2,59 @@
 
 import {
   AlertTriangle,
-  ArrowLeft,
-  BarChart3,
+  ArrowUpDown,
   Building2,
-  CheckCircle2,
-  Clock3,
-  IndianRupee,
-  MapPin,
-  ShieldAlert,
+  ChevronRight,
+  Search,
+  ShieldCheck,
+  SlidersHorizontal,
   TrendingDown,
   TrendingUp,
+  X,
 } from "lucide-react";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { getProject } from "@/lib/api";
+import { getProjects } from "@/lib/api";
 import { Project } from "@/types/project";
 
-interface ProjectPageProps {
-  params: Promise<{
-    id: string;
-  }>;
-}
+type RiskFilter = "all" | "critical" | "high" | "medium" | "low";
 
-export default function ProjectPage({
-  params,
-}: ProjectPageProps) {
-  const [project, setProject] =
-    useState<Project | null>(null);
+export default function ProjectsPage() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [search, setSearch] = useState("");
+  const [riskFilter, setRiskFilter] =
+    useState<RiskFilter>("all");
 
-  const [notFound, setNotFound] =
-    useState(false);
+  const [sectorFilter, setSectorFilter] =
+    useState("all");
+
+  const [stateFilter, setStateFilter] =
+    useState("all");
+
+  const [ministryFilter, setMinistryFilter] =
+    useState("all");
+
+  const [sortBy, setSortBy] =
+    useState<"risk" | "progress" | "cost">("risk");
 
   useEffect(() => {
     let mounted = true;
 
-    async function loadProject() {
+    async function load() {
       try {
-        const { id } =
-          await params;
+        const data = await getProjects();
 
-        const data =
-          await getProject(id);
-
-        if (!mounted) return;
-
-        if (!data) {
-          setNotFound(true);
-        } else {
-          setProject(data);
+        if (mounted) {
+          setProjects(data);
         }
       } catch (error) {
         console.error(
-          "Failed to load project:",
+          "Failed to load projects:",
           error
         );
-
-        if (mounted) {
-          setNotFound(true);
-        }
       } finally {
         if (mounted) {
           setLoading(false);
@@ -72,582 +62,707 @@ export default function ProjectPage({
       }
     }
 
-    loadProject();
+    load();
 
     return () => {
       mounted = false;
     };
-  }, [params]);
+  }, []);
 
-  /* =========================================
-     LOADING
-  ========================================= */
+  /* ======================================================
+     FILTER OPTIONS
+  ====================================================== */
 
-  if (loading) {
-    return (
-      <main className="darpan-app">
+  const sectors = useMemo(
+    () =>
+      unique(
+        projects.map(
+          (project) => project.sector
+        )
+      ),
+    [projects]
+  );
 
-        <aside className="sidebar">
-          <ProjectSidebar />
-        </aside>
+  const states = useMemo(
+    () =>
+      unique(
+        projects.map(
+          (project) => project.state
+        )
+      ),
+    [projects]
+  );
 
-        <section className="main-area">
+  const ministries = useMemo(
+    () =>
+      unique(
+        projects.map(
+          (project) => project.ministry
+        )
+      ),
+    [projects]
+  );
 
-          <header className="top-header">
+  /* ======================================================
+     FILTERED PROJECTS
+  ====================================================== */
+
+  const filteredProjects = useMemo(() => {
+    const query = search
+      .trim()
+      .toLowerCase();
+
+    const result = projects.filter(
+      (project) => {
+        const matchesSearch =
+          !query ||
+          project.name
+            .toLowerCase()
+            .includes(query) ||
+          project.id
+            .toLowerCase()
+            .includes(query) ||
+          project.state
+            .toLowerCase()
+            .includes(query) ||
+          project.sector
+            .toLowerCase()
+            .includes(query) ||
+          project.ministry
+            .toLowerCase()
+            .includes(query);
+
+        const matchesRisk =
+          riskFilter === "all" ||
+          project.risk.level === riskFilter;
+
+        const matchesSector =
+          sectorFilter === "all" ||
+          project.sector === sectorFilter;
+
+        const matchesState =
+          stateFilter === "all" ||
+          project.state === stateFilter;
+
+        const matchesMinistry =
+          ministryFilter === "all" ||
+          project.ministry === ministryFilter;
+
+        return (
+          matchesSearch &&
+          matchesRisk &&
+          matchesSector &&
+          matchesState &&
+          matchesMinistry
+        );
+      }
+    );
+
+    return [...result].sort(
+      (a, b) => {
+        if (sortBy === "progress") {
+          return (
+            b.progress.physical -
+            a.progress.physical
+          );
+        }
+
+        if (sortBy === "cost") {
+          return (
+            b.financial.revisedCost -
+            a.financial.revisedCost
+          );
+        }
+
+        return (
+          b.risk.overall -
+          a.risk.overall
+        );
+      }
+    );
+  }, [
+    projects,
+    search,
+    riskFilter,
+    sectorFilter,
+    stateFilter,
+    ministryFilter,
+    sortBy,
+  ]);
+
+  /* ======================================================
+     SUMMARY
+  ====================================================== */
+
+  const critical = projects.filter(
+    (p) => p.risk.level === "critical"
+  ).length;
+
+  const high = projects.filter(
+    (p) => p.risk.level === "high"
+  ).length;
+
+  const medium = projects.filter(
+    (p) => p.risk.level === "medium"
+  ).length;
+
+  const low = projects.filter(
+    (p) => p.risk.level === "low"
+  ).length;
+
+  const totalExposure = projects.reduce(
+    (sum, project) =>
+      sum +
+      Math.max(
+        0,
+        project.financial.revisedCost -
+          project.financial.approvedCost
+      ),
+    0
+  );
+
+  const averageRisk = projects.length
+    ? Math.round(
+        projects.reduce(
+          (sum, project) =>
+            sum + project.risk.overall,
+          0
+        ) / projects.length
+      )
+    : 0;
+
+  const hasFilters =
+    search ||
+    riskFilter !== "all" ||
+    sectorFilter !== "all" ||
+    stateFilter !== "all" ||
+    ministryFilter !== "all";
+
+  function clearFilters() {
+    setSearch("");
+    setRiskFilter("all");
+    setSectorFilter("all");
+    setStateFilter("all");
+    setMinistryFilter("all");
+  }
+
+  return (
+    <main className="projects-page">
+
+      {/* ==================================================
+          SIDEBAR
+      ================================================== */}
+
+      <aside className="projects-sidebar">
+
+        <div className="projects-brand">
+
+          <div className="projects-brand-logo">
+            <img
+              src="/darpan-logo.png"
+              alt="DARPAN"
+            />
+          </div>
+
+          <div>
+            <strong>DARPAN</strong>
+            <span>
+              Infrastructure Intelligence
+            </span>
+          </div>
+
+        </div>
+
+        <div className="projects-nav-label">
+          COMMAND CENTER
+        </div>
+
+        <nav className="projects-nav">
+
+          <Link
+            href="/"
+            className="projects-nav-item"
+          >
+            <span>▦</span>
+            Dashboard
+          </Link>
+
+          <Link
+            href="/projects"
+            className="projects-nav-item active"
+          >
+            <Building2 size={17} />
+            Projects
+          </Link>
+
+          <Link
+            href="/warnings"
+            className="projects-nav-item"
+          >
+            <AlertTriangle size={17} />
+            Early Warnings
+
+            {critical > 0 && (
+              <b>{critical}</b>
+            )}
+          </Link>
+
+          <Link
+            href="/investigation"
+            className="projects-nav-item"
+          >
+            <ShieldCheck size={17} />
+            Investigation
+          </Link>
+
+        </nav>
+
+        <div className="projects-sidebar-bottom">
+
+          <div className="projects-engine">
+
+            <span />
 
             <div>
+              <strong>
+                Analytics engine
+              </strong>
 
-              <div className="breadcrumb">
-                PROJECTS / INTELLIGENCE
-              </div>
-
-              <h1>
-                Project Intelligence
-              </h1>
-
+              <small>
+                Operational
+              </small>
             </div>
 
-            <div className="data-refresh">
+          </div>
 
-              <div className="refresh-dot" />
+          <div className="projects-version">
+            DARPAN v0.1
+          </div>
 
-              Data snapshot
+        </div>
+
+      </aside>
+
+      {/* ==================================================
+          MAIN
+      ================================================== */}
+
+      <section className="projects-main">
+
+        {/* HEADER */}
+
+        <header className="projects-header">
+
+          <div>
+
+            <span className="projects-kicker">
+              DARPAN / PROJECT PORTFOLIO
+            </span>
+
+            <h1>
+              Infrastructure Projects
+            </h1>
+
+            <p>
+              Monitor, compare and investigate
+              project-level risk across the
+              national portfolio.
+            </p>
+
+          </div>
+
+          <div className="projects-snapshot">
+
+            <span />
+
+            <div>
+              <small>
+                DATA SNAPSHOT
+              </small>
 
               <strong>
                 April 2026
               </strong>
-
             </div>
-
-          </header>
-
-          <div className="dashboard-content">
-
-            <div className="project-loading">
-
-              <div className="loading-spinner" />
-
-              <span>
-                Loading project intelligence...
-              </span>
-
-            </div>
-
-          </div>
-
-        </section>
-
-      </main>
-    );
-  }
-
-  /* =========================================
-     NOT FOUND
-  ========================================= */
-
-  if (notFound || !project) {
-    return (
-      <main className="darpan-app">
-
-        <aside className="sidebar">
-          <ProjectSidebar />
-        </aside>
-
-        <section className="main-area">
-
-          <header className="top-header">
-
-            <div>
-
-              <div className="breadcrumb">
-                PROJECTS
-              </div>
-
-              <h1>
-                Project Intelligence
-              </h1>
-
-            </div>
-
-          </header>
-
-          <div className="dashboard-content">
-
-            <div className="project-not-found">
-
-              <AlertTriangle size={30} />
-
-              <h2>
-                Project not found
-              </h2>
-
-              <p>
-                The requested project could
-                not be found in the DARPAN
-                data layer.
-              </p>
-
-              <Link
-                href="/projects"
-                className="back-link"
-              >
-                <ArrowLeft size={15} />
-                Back to projects
-              </Link>
-
-            </div>
-
-          </div>
-
-        </section>
-
-      </main>
-    );
-  }
-
-  /* =========================================
-     CALCULATIONS
-  ========================================= */
-
-  const progressGap =
-    project.progress.financial -
-    project.progress.physical;
-
-  const riskLabel =
-    project.risk.level === "critical"
-      ? "Critical risk"
-      : project.risk.level === "high"
-      ? "High risk"
-      : project.risk.level === "medium"
-      ? "Medium risk"
-      : "Low risk";
-
-  return (
-    <main className="darpan-app">
-
-      {/* =====================================
-          SIDEBAR
-      ====================================== */}
-
-      <aside className="sidebar">
-        <ProjectSidebar />
-      </aside>
-
-      {/* =====================================
-          MAIN
-      ====================================== */}
-
-      <section className="main-area">
-
-        <header className="top-header">
-
-          <div>
-
-            <div className="breadcrumb">
-              PROJECTS / INTELLIGENCE
-            </div>
-
-            <h1>
-              Project Intelligence
-            </h1>
-
-          </div>
-
-          <div className="data-refresh">
-
-            <div className="refresh-dot" />
-
-            Data snapshot
-
-            <strong>
-              April 2026
-            </strong>
 
           </div>
 
         </header>
 
-        <div className="dashboard-content">
+        {/* ==================================================
+            SUMMARY CARDS
+        ================================================== */}
 
-          {/* BACK */}
+        <section className="projects-summary">
 
-          <Link
-            href="/projects"
-            className="back-link"
-          >
-            <ArrowLeft size={15} />
-            Back to projects
-          </Link>
+          <SummaryCard
+            label="Total projects"
+            value={
+              loading
+                ? "—"
+                : projects.length
+            }
+            note="Monitored portfolio"
+            icon={
+              <Building2 size={19} />
+            }
+          />
 
-          {/* =================================
-              PROJECT HERO
-          ================================== */}
+          <SummaryCard
+            label="Critical + high"
+            value={
+              loading
+                ? "—"
+                : critical + high
+            }
+            note={
+              projects.length
+                ? `${Math.round(
+                    ((critical + high) /
+                      projects.length) *
+                      100
+                  )}% of portfolio`
+                : "Risk exposure"
+            }
+            icon={
+              <AlertTriangle size={19} />
+            }
+            danger={
+              critical + high > 0
+            }
+          />
 
-          <section className="project-hero">
+          <SummaryCard
+            label="Average risk"
+            value={
+              loading
+                ? "—"
+                : `${averageRisk}/100`
+            }
+            note={
+              averageRisk >= 70
+                ? "Elevated"
+                : averageRisk >= 45
+                ? "Moderate"
+                : "Controlled"
+            }
+            icon={
+              <TrendingUp size={19} />
+            }
+          />
 
-            <div className="project-heading">
+          <SummaryCard
+            label="Cost exposure"
+            value={
+              loading
+                ? "—"
+                : formatCrore(
+                    totalExposure
+                  )
+            }
+            note="Revised − approved"
+            icon={
+              <TrendingDown size={19} />
+            }
+          />
 
-              <div className="large-project-icon">
-                <Building2 size={25} />
-              </div>
+        </section>
 
-              <div>
+        {/* ==================================================
+            RISK DISTRIBUTION
+        ================================================== */}
 
-                <div className="project-id">
-                  {project.id}
-                </div>
+        <section className="projects-risk-strip">
 
-                <h2>
-                  {project.name}
-                </h2>
+          <div className="projects-risk-title">
 
-                <div className="project-meta">
+            <span>
+              PORTFOLIO RISK
+            </span>
 
-                  <span>
-                    <MapPin size={12} />
-                    {project.state}
-                  </span>
-
-                  <span>
-                    <Building2 size={12} />
-                    {project.sector}
-                  </span>
-
-                  <span>
-                    {project.ministry}
-                  </span>
-
-                </div>
-
-              </div>
-
-            </div>
-
-            {/* RISK SCORE */}
-
-            <div className="project-risk">
-
-              <div className="risk-score-label">
-                DARPAN RISK SCORE
-              </div>
-
-              <div className="risk-score">
-                {project.risk.overall}
-
-                <span>
-                  /100
-                </span>
-
-              </div>
-
-              <div className="risk-score-status">
-
-                <span className="risk-dot" />
-
-                {riskLabel}
-
-              </div>
-
-            </div>
-
-          </section>
-
-          {/* =================================
-              RISK + EXECUTION
-          ================================== */}
-
-          <div className="project-grid">
-
-            {/* RISK */}
-
-            <section className="panel project-risk-panel">
-
-              <div className="panel-label">
-                RISK FINGERPRINT
-              </div>
-
-              <h3>
-                Current risk composition
-              </h3>
-
-              <div className="risk-metrics">
-
-                <RiskMetric
-                  label="Schedule risk"
-                  value={
-                    project.risk.schedule
-                  }
-                  icon={
-                    <Clock3 size={17} />
-                  }
-                />
-
-                <RiskMetric
-                  label="Cost risk"
-                  value={
-                    project.risk.cost
-                  }
-                  icon={
-                    <IndianRupee size={17} />
-                  }
-                />
-
-                <RiskMetric
-                  label="Implementation"
-                  value={
-                    project.risk
-                      .implementation
-                  }
-                  icon={
-                    <ShieldAlert size={17} />
-                  }
-                />
-
-              </div>
-
-            </section>
-
-            {/* EXECUTION */}
-
-            <section className="panel progress-panel">
-
-              <div className="panel-label">
-                EXECUTION HEALTH
-              </div>
-
-              <h3>
-                Physical vs financial progress
-              </h3>
-
-              <ProgressRow
-                label="Physical progress"
-                value={
-                  project.progress.physical
-                }
-              />
-
-              <ProgressRow
-                label="Financial progress"
-                value={
-                  project.progress.financial
-                }
-              />
-
-              <div className="progress-insight">
-
-                {progressGap >= 0 ? (
-                  <TrendingUp size={14} />
-                ) : (
-                  <TrendingDown size={14} />
-                )}
-
-                <span>
-
-                  {progressGap >= 0
-                    ? `Financial progress is ahead of physical progress by ${progressGap} percentage points.`
-                    : `Physical progress is ahead of financial progress by ${Math.abs(
-                        progressGap
-                      )} percentage points.`}
-
-                </span>
-
-              </div>
-
-            </section>
+            <strong>
+              Risk distribution
+            </strong>
 
           </div>
 
-          {/* =================================
-              FINANCIAL + WARNING
-          ================================== */}
+          <RiskSegment
+            label="Low"
+            count={low}
+            total={projects.length}
+            type="low"
+          />
 
-          <div className="project-grid">
+          <RiskSegment
+            label="Medium"
+            count={medium}
+            total={projects.length}
+            type="medium"
+          />
 
-            {/* FINANCIAL */}
+          <RiskSegment
+            label="High"
+            count={high}
+            total={projects.length}
+            type="high"
+          />
 
-            <section className="panel">
+          <RiskSegment
+            label="Critical"
+            count={critical}
+            total={projects.length}
+            type="critical"
+          />
 
-              <div className="panel-label">
-                COST POSITION
-              </div>
+        </section>
 
-              <h3>
-                Project financial exposure
-              </h3>
+        {/* ==================================================
+            SEARCH + FILTERS
+        ================================================== */}
 
-              <div className="financial-grid">
+        <section className="projects-controls">
 
-                <FinancialMetric
-                  label="Approved cost"
-                  value={formatCrore(
-                    project.financial
-                      .approvedCost
-                  )}
-                />
+          <div className="projects-search">
 
-                <FinancialMetric
-                  label="Revised cost"
-                  value={formatCrore(
-                    project.financial
-                      .revisedCost
-                  )}
-                  danger
-                />
+            <Search size={18} />
 
-                <FinancialMetric
-                  label="Cumulative expenditure"
-                  value={formatCrore(
-                    project.financial
-                      .expenditure
-                  )}
-                />
+            <input
+              value={search}
+              onChange={(event) =>
+                setSearch(
+                  event.target.value
+                )
+              }
+              placeholder="Search project, ID, state, sector or ministry..."
+            />
 
-              </div>
-
-            </section>
-
-            {/* WARNING */}
-
-            <section className="panel warning-panel">
-
-              <div className="warning-icon">
-                <AlertTriangle
-                  size={19}
-                />
-              </div>
-
-              <div>
-
-                <div className="panel-label">
-                  PRIMARY EARLY WARNING
-                </div>
-
-                <h3>
-                  {project.primaryRiskDriver ??
-                    "No major warning detected"}
-                </h3>
-
-                <p>
-
-                  {project.warnings.length >
-                  0
-                    ? project.warnings[0]
-                        .description
-                    : "Current project trajectory does not indicate a major active warning."}
-
-                </p>
-
-              </div>
-
-              <Link
-                href="/warnings"
-                className="warning-investigate-link"
+            {search && (
+              <button
+                onClick={() =>
+                  setSearch("")
+                }
+                aria-label="Clear search"
               >
-                View warnings →
-              </Link>
-
-            </section>
+                <X size={15} />
+              </button>
+            )}
 
           </div>
 
-          {/* =================================
-              PREDICTIVE INTELLIGENCE
-          ================================== */}
+          <div className="projects-filter-group">
 
-          <section className="panel prediction-panel">
+            <SlidersHorizontal
+              size={16}
+            />
 
-            <div className="panel-header">
+            <select
+              value={sectorFilter}
+              onChange={(event) =>
+                setSectorFilter(
+                  event.target.value
+                )
+              }
+            >
+              <option value="all">
+                All sectors
+              </option>
 
-              <div>
+              {sectors.map((sector) => (
+                <option
+                  key={sector}
+                  value={sector}
+                >
+                  {sector}
+                </option>
+              ))}
 
-                <div className="panel-label">
-                  PREDICTIVE INTELLIGENCE
-                </div>
+            </select>
 
-                <h3>
-                  What DARPAN sees ahead
-                </h3>
+            <select
+              value={stateFilter}
+              onChange={(event) =>
+                setStateFilter(
+                  event.target.value
+                )
+              }
+            >
+              <option value="all">
+                All states
+              </option>
 
-              </div>
+              {states.map((state) => (
+                <option
+                  key={state}
+                  value={state}
+                >
+                  {state}
+                </option>
+              ))}
 
-              <span className="prediction-badge">
+            </select>
 
-                <TrendingUp size={13} />
+            <select
+              value={ministryFilter}
+              onChange={(event) =>
+                setMinistryFilter(
+                  event.target.value
+                )
+              }
+            >
+              <option value="all">
+                All ministries
+              </option>
 
-                {project.warnings.length >
-                0
-                  ? "Early warning active"
-                  : "Monitoring normally"}
+              {ministries.map(
+                (ministry) => (
+                  <option
+                    key={ministry}
+                    value={ministry}
+                  >
+                    {ministry}
+                  </option>
+                )
+              )}
 
+            </select>
+
+            <select
+              value={riskFilter}
+              onChange={(event) =>
+                setRiskFilter(
+                  event.target
+                    .value as RiskFilter
+                )
+              }
+            >
+              <option value="all">
+                All risk levels
+              </option>
+
+              <option value="critical">
+                Critical
+              </option>
+
+              <option value="high">
+                High
+              </option>
+
+              <option value="medium">
+                Medium
+              </option>
+
+              <option value="low">
+                Low
+              </option>
+
+            </select>
+
+            <select
+              value={sortBy}
+              onChange={(event) =>
+                setSortBy(
+                  event.target
+                    .value as
+                    | "risk"
+                    | "progress"
+                    | "cost"
+                )
+              }
+            >
+              <option value="risk">
+                Highest risk
+              </option>
+
+              <option value="progress">
+                Highest progress
+              </option>
+
+              <option value="cost">
+                Highest cost
+              </option>
+
+            </select>
+
+          </div>
+
+        </section>
+
+        {/* ACTIVE FILTER */}
+
+        {hasFilters && (
+          <div className="projects-filter-status">
+
+            <span>
+              Showing{" "}
+              <strong>
+                {filteredProjects.length}
+              </strong>{" "}
+              of{" "}
+              <strong>
+                {projects.length}
+              </strong>{" "}
+              projects
+            </span>
+
+            <button
+              onClick={clearFilters}
+            >
+              Clear filters
+              <X size={14} />
+            </button>
+
+          </div>
+        )}
+
+        {/* ==================================================
+            PROJECT LIST
+        ================================================== */}
+
+        <section className="projects-table-panel">
+
+          <div className="projects-table-head">
+
+            <div>
+              <span>
+                PROJECT PORTFOLIO
               </span>
 
+              <strong>
+                Priority-ranked projects
+              </strong>
             </div>
 
-            <div className="prediction-grid">
-
-              <Prediction
-                title="Cost overrun probability"
-                value={`${project.prediction.costOverrunProbability}%`}
-                description="Estimated probability of cost escalation"
-              />
-
-              <Prediction
-                title="Time overrun probability"
-                value={`${project.prediction.timeOverrunProbability}%`}
-                description="Estimated probability of schedule deviation"
-              />
-
-              <Prediction
-                title="Implementation risk"
-                value={`${project.prediction.implementationRiskProbability}%`}
-                description="Estimated execution pressure"
-              />
-
+            <div className="projects-count">
+              <ArrowUpDown size={14} />
+              {filteredProjects.length} results
             </div>
-
-          </section>
-
-          {/* =================================
-              NEXT MODULES
-          ================================== */}
-
-          <div className="next-modules">
-
-            <ModuleCard
-              icon={
-                <TrendingUp size={19} />
-              }
-              title="Risk trajectory"
-              description="Understand how project risk has evolved."
-            />
-
-            <ModuleCard
-              icon={
-                <BarChart3 size={19} />
-              }
-              title="Peer benchmarking"
-              description="Compare this project with similar projects."
-            />
-
-            <ModuleCard
-              icon={
-                <AlertTriangle size={19} />
-              }
-              title="Anomaly investigation"
-              description="Inspect unusual project behaviour."
-            />
-
-            <ModuleCard
-              icon={
-                <CheckCircle2 size={19} />
-              }
-              title="Intervention plan"
-              description="Identify recommended intervention areas."
-            />
 
           </div>
 
-        </div>
+          {loading ? (
+            <LoadingState />
+          ) : filteredProjects.length ===
+            0 ? (
+            <EmptyState
+              onClear={clearFilters}
+            />
+          ) : (
+            <div className="projects-list">
+
+              {filteredProjects.map(
+                (project, index) => (
+                  <ProjectRow
+                    key={project.id}
+                    project={project}
+                    rank={index + 1}
+                  />
+                )
+              )}
+
+            </div>
+          )}
+
+        </section>
 
       </section>
 
@@ -655,264 +770,37 @@ export default function ProjectPage({
   );
 }
 
-/* =========================================
-   SIDEBAR
-========================================= */
 
-function ProjectSidebar() {
-  return (
-    <>
-      <div className="brand">
+/* =========================================================
+   SUMMARY CARD
+========================================================= */
 
-        <div className="brand-mark">
-          <span>द</span>
-        </div>
-
-        <div>
-
-          <div className="brand-name">
-            DARPAN
-          </div>
-
-          <div className="brand-subtitle">
-            Infrastructure Intelligence
-          </div>
-
-        </div>
-
-      </div>
-
-      <div className="sidebar-section-label">
-        PROJECT INTELLIGENCE
-      </div>
-
-      <nav className="sidebar-nav">
-
-        <Link
-          href="/"
-          className="nav-item"
-        >
-          <BarChart3 size={18} />
-          <span>
-            Dashboard
-          </span>
-        </Link>
-
-        <Link
-          href="/projects"
-          className="nav-item nav-active"
-        >
-          <Building2 size={18} />
-          <span>
-            Projects
-          </span>
-        </Link>
-
-        <Link
-          href="/warnings"
-          className="nav-item"
-        >
-          <AlertTriangle size={18} />
-          <span>
-            Early Warnings
-          </span>
-        </Link>
-
-        <Link
-          href="/investigation"
-          className="nav-item"
-        >
-          <ShieldAlert size={18} />
-          <span>
-            Investigation
-          </span>
-        </Link>
-
-      </nav>
-
-      <div className="sidebar-spacer" />
-
-      <div className="system-status">
-
-        <div className="status-pulse">
-          <span />
-        </div>
-
-        <div>
-
-          <div className="status-title">
-            Analytics engine
-          </div>
-
-          <div className="status-value">
-            Operational
-          </div>
-
-        </div>
-
-      </div>
-
-      <div className="sidebar-footer">
-
-        <div className="footer-symbol">
-          D
-        </div>
-
-        <div>
-
-          <div className="footer-name">
-            DARPAN v0.1
-          </div>
-
-          <div className="footer-text">
-            Predictive monitoring
-          </div>
-
-        </div>
-
-      </div>
-    </>
-  );
-}
-
-/* =========================================
-   RISK METRIC
-========================================= */
-
-function RiskMetric({
+function SummaryCard({
   label,
   value,
+  note,
   icon,
-}: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-}) {
-  return (
-    <div className="risk-metric">
-
-      <div className="risk-metric-icon">
-        {icon}
-      </div>
-
-      <div className="risk-metric-info">
-
-        <span>
-          {label}
-        </span>
-
-        <strong>
-          {value}
-        </strong>
-
-      </div>
-
-      <div className="metric-bar">
-
-        <span
-          style={{
-            width: `${value}%`,
-          }}
-        />
-
-      </div>
-
-    </div>
-  );
-}
-
-/* =========================================
-   PROGRESS ROW
-========================================= */
-
-function ProgressRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="progress-row">
-
-      <div>
-
-        <span>
-          {label}
-        </span>
-
-        <strong>
-          {value}%
-        </strong>
-
-      </div>
-
-      <div className="progress-track">
-
-        <span
-          style={{
-            width: `${value}%`,
-          }}
-        />
-
-      </div>
-
-    </div>
-  );
-}
-
-/* =========================================
-   FINANCIAL METRIC
-========================================= */
-
-function FinancialMetric({
-  label,
-  value,
   danger,
 }: {
   label: string;
-  value: string;
+  value: string | number;
+  note: string;
+  icon: React.ReactNode;
   danger?: boolean;
 }) {
   return (
-    <div className="financial-metric">
+    <article
+      className={`project-summary-card ${
+        danger ? "danger" : ""
+      }`}
+    >
+
+      <div className="project-summary-icon">
+        {icon}
+      </div>
 
       <span>
         {label}
-      </span>
-
-      <strong
-        className={
-          danger
-            ? "financial-danger"
-            : ""
-        }
-      >
-        {value}
-      </strong>
-
-    </div>
-  );
-}
-
-/* =========================================
-   PREDICTION
-========================================= */
-
-function Prediction({
-  title,
-  value,
-  description,
-}: {
-  title: string;
-  value: string;
-  description: string;
-}) {
-  return (
-    <div className="prediction-card">
-
-      <span>
-        {title}
       </span>
 
       <strong>
@@ -920,63 +808,313 @@ function Prediction({
       </strong>
 
       <small>
-        {description}
+        {note}
       </small>
+
+    </article>
+  );
+}
+
+
+/* =========================================================
+   RISK SEGMENT
+========================================================= */
+
+function RiskSegment({
+  label,
+  count,
+  total,
+  type,
+}: {
+  label: string;
+  count: number;
+  total: number;
+  type:
+    | "low"
+    | "medium"
+    | "high"
+    | "critical";
+}) {
+  const percentage = total
+    ? Math.round(
+        (count / total) * 100
+      )
+    : 0;
+
+  return (
+    <div className="project-risk-segment">
+
+      <div className="project-risk-segment-label">
+
+        <span className={`risk-dot ${type}`} />
+
+        <span>
+          {label}
+        </span>
+
+        <strong>
+          {count}
+        </strong>
+
+        <small>
+          {percentage}%
+        </small>
+
+      </div>
+
+      <div className="project-risk-track">
+
+        <span
+          className={type}
+          style={{
+            width: `${percentage}%`,
+          }}
+        />
+
+      </div>
 
     </div>
   );
 }
 
-/* =========================================
-   MODULE CARD
-========================================= */
 
-function ModuleCard({
-  icon,
-  title,
-  description,
+/* =========================================================
+   PROJECT ROW
+========================================================= */
+
+function ProjectRow({
+  project,
+  rank,
 }: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
+  project: Project;
+  rank: number;
 }) {
+  const financialGap =
+    project.progress.financial -
+    project.progress.physical;
+
   return (
-    <button
-      type="button"
-      className="module-card"
+    <Link
+      href={`/projects/${project.id}`}
+      className="project-row"
     >
 
-      <div className="module-icon">
-        {icon}
+      <div className="project-rank">
+        {String(rank).padStart(2, "0")}
       </div>
 
-      <div>
+      <div className="project-row-icon">
+        <Building2 size={19} />
+      </div>
+
+      <div className="project-row-main">
 
         <strong>
-          {title}
+          {project.name}
+        </strong>
+
+        <div className="project-row-meta">
+
+          <span>
+            {project.id}
+          </span>
+
+          <i />
+
+          <span>
+            {project.ministry}
+          </span>
+
+        </div>
+
+      </div>
+
+      <div className="project-row-location">
+
+        <small>
+          LOCATION
+        </small>
+
+        <strong>
+          {project.state}
+        </strong>
+
+      </div>
+
+      <div className="project-row-sector">
+
+        <small>
+          SECTOR
+        </small>
+
+        <strong>
+          {project.sector}
+        </strong>
+
+      </div>
+
+      <div className="project-row-progress">
+
+        <div className="progress-label">
+
+          <span>
+            Physical
+          </span>
+
+          <strong>
+            {project.progress.physical}%
+          </strong>
+
+        </div>
+
+        <div className="progress-track">
+
+          <span
+            style={{
+              width: `${project.progress.physical}%`,
+            }}
+          />
+
+        </div>
+
+        <small>
+          Financial{" "}
+          {project.progress.financial}%
+        </small>
+
+      </div>
+
+      <div className="project-row-gap">
+
+        <small>
+          FIN. − PHYSICAL
+        </small>
+
+        <strong
+          className={
+            financialGap > 10
+              ? "gap-danger"
+              : financialGap > 5
+              ? "gap-warning"
+              : ""
+          }
+        >
+          {financialGap > 0
+            ? `+${financialGap}`
+            : financialGap}
+          pp
+        </strong>
+
+      </div>
+
+      <div
+        className={`project-row-risk ${project.risk.level}`}
+      >
+
+        <strong>
+          {project.risk.overall}
         </strong>
 
         <span>
-          {description}
+          {project.risk.level}
         </span>
 
       </div>
 
-      <b>
-        →
-      </b>
+      <ChevronRight
+        size={18}
+        className="project-row-arrow"
+      />
 
-    </button>
+    </Link>
   );
 }
 
-/* =========================================
-   FORMAT CURRENCY
-========================================= */
+
+/* =========================================================
+   LOADING
+========================================================= */
+
+function LoadingState() {
+  return (
+    <div className="projects-loading">
+
+      <div className="projects-loader" />
+
+      <strong>
+        Loading project portfolio
+      </strong>
+
+      <span>
+        Fetching current project intelligence...
+      </span>
+
+    </div>
+  );
+}
+
+
+/* =========================================================
+   EMPTY
+========================================================= */
+
+function EmptyState({
+  onClear,
+}: {
+  onClear: () => void;
+}) {
+  return (
+    <div className="projects-empty">
+
+      <Search size={30} />
+
+      <strong>
+        No projects found
+      </strong>
+
+      <span>
+        Try changing your search or
+        filters.
+      </span>
+
+      <button onClick={onClear}>
+        Clear filters
+      </button>
+
+    </div>
+  );
+}
+
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function unique(
+  values: string[]
+) {
+  return Array.from(
+    new Set(
+      values.filter(Boolean)
+    )
+  ).sort();
+}
 
 function formatCrore(
   value: number
 ) {
+  if (value >= 100000) {
+    return `₹${(
+      value / 100000
+    ).toFixed(2)}L Cr`;
+  }
+
+  if (value >= 1000) {
+    return `₹${(
+      value / 1000
+    ).toFixed(1)}K Cr`;
+  }
+
   return `₹${value.toLocaleString(
     "en-IN"
   )} Cr`;
